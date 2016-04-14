@@ -1,7 +1,13 @@
 package student;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.PriorityQueue;
+import java.util.Set;
+
 import game.EscapeState;
 import game.ExplorationState;
+import game.NodeStatus;
 
 public class Explorer {
 
@@ -36,9 +42,9 @@ public class Explorer {
      * @param state the information available at the current state
      */
     public void explore(ExplorationState state) {
-        //TODO:
+        explore(state, -1, new HashSet<Long>());
     }
-
+    
     /**
      * Escape from the cavern before the ceiling collapses, trying to collect as much
      * gold as possible along the way. Your solution must ALWAYS escape before time runs
@@ -64,5 +70,44 @@ public class Explorer {
      */
     public void escape(EscapeState state) {
         //TODO: Escape from the cavern before time runs out
+    }
+    
+    private boolean explore(ExplorationState state, long previousLocation,
+        Set<Long> visited
+    ) {
+        // Are we done?
+        if (state.getDistanceToTarget() == 0)
+            return true;
+        
+        // Select the best node to move to
+        PriorityQueue<NodeStatus> priorityQueue = new PriorityQueue<>();
+        
+        Collection<NodeStatus> nodes = state.getNeighbours();
+        for (NodeStatus node : nodes) {
+            // Only add if not previously visited
+            if (!visited.contains(new Long(node.getId())))
+                priorityQueue.add(node);
+        }
+        
+        // Explore from assumed best node until we find a path to the orb
+        long currentLocation = state.getCurrentLocation();
+        NodeStatus node;
+        
+        while ((node = priorityQueue.poll()) != null) {
+            // Move to the best location
+            long id = node.getId();
+            state.moveTo(id);
+            
+            // Add to visited set
+            visited.add(id);
+            
+            // Continue exploration
+            if (explore(state, currentLocation, visited))
+                return true;
+        }
+        
+        // We reached a dead end, move back
+        state.moveTo(previousLocation);
+        return false;
     }
 }
