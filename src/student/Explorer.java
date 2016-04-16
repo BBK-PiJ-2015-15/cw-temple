@@ -85,7 +85,7 @@ public class Explorer {
         Collection<NodeStatus> nodes = state.getNeighbours();
         for (NodeStatus node : nodes) {
             // Only add if not previously visited
-            if (!visited.contains(new Long(node.getId())))
+            if (!visited.contains(node.getId()))
                 priorityQueue.add(node);
         }
         
