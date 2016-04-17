@@ -80,11 +80,12 @@ public class Explorer {
         HashMap<Node, Node> prev = escapeSearch(state.getVertices(), source);
         
         // Determine path
-        Stack<Node> path = determineEscapePath(prev, source, state.getExit());
+        Path path = determineEscapePath(prev, source, state.getExit());
         
         // Walk to exit node
-        while (!path.isEmpty()) {
-            Node node = path.pop();
+        Node previousNode = source;
+        while (!path.route.isEmpty()) {
+            Node node = path.route.pop();
             
             // Move to node
             state.moveTo(node);
@@ -93,6 +94,27 @@ public class Explorer {
             Tile tile = node.getTile();
             if (tile.getGold() != 0)
                 state.pickUpGold();
+            
+            // Update distance
+            path.distance -= previousNode.getEdge(node).length();
+            
+            // If we have time, move to neighbours to collect gold
+            Set<Node> childs = node.getNeighbours();
+            for (Node child : childs) {
+                if (!path.route.contains(child) &&
+                    child.getTile().getGold() != 0
+                ) {
+                    int extraDistance = 2 * node.getEdge(child).length();
+                    if (path.distance + extraDistance < state.getTimeRemaining()) {
+                        state.moveTo(child);
+                        state.pickUpGold();
+                        state.moveTo(node);
+                        path.distance -= extraDistance;
+                    }
+                }
+            }
+            
+            previousNode = node;
         }
     }
     
@@ -216,17 +238,31 @@ public class Explorer {
      * @param target the target node
      * @return the path
      */
-    private Stack<Node> determineEscapePath(Map<Node, Node> prev, Node source,
+    private Path determineEscapePath(Map<Node, Node> prev, Node source,
         Node target
     ) {
-        Stack<Node> path = new Stack<>();
-        
+        Path path = new Path();
+
         // Walk from target to source node
         Node node = target;
         while (node != source) {
-            path.push(node);
-            node = prev.get(node);
+            // Add node to path
+            path.route.push(node);
+            
+            Node next = prev.get(node);
+            
+            // Update distance
+            path.distance += node.getEdge(next).length();
+            
+            node = next;
         }
         return path;
+    }
+    
+    /** Helper class.
+     */
+    private class Path {
+        public Stack<Node> route = new Stack<>();;
+        public int distance = 0;
     }
 }
