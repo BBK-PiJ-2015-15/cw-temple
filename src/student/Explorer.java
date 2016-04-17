@@ -1,16 +1,21 @@
 package student;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.Stack;
 
 import game.EscapeState;
 import game.ExplorationState;
+import game.Node;
 import game.NodeStatus;
+import game.Tile;
 
 public class Explorer {
-
     /**
      * Explore the cavern, trying to find the orb in as few steps as possible.
      * Once you find the orb, you must return from the function in order to pick
@@ -69,9 +74,38 @@ public class Explorer {
      * @param state the information available at the current state
      */
     public void escape(EscapeState state) {
-        //TODO: Escape from the cavern before time runs out
+        Node source = state.getCurrentNode();
+        
+        // Dijskra's search
+        HashMap<Node, Node> prev = escapeSearch(state.getVertices(), source);
+        
+        // Determine path
+        Stack<Node> path = determineEscapePath(prev, source, state.getExit());
+        
+        // Walk to exit node
+        while (!path.isEmpty()) {
+            Node node = path.pop();
+            
+            // Move to node
+            state.moveTo(node);
+            
+            // Pick up gold
+            Tile tile = node.getTile();
+            if (tile.getGold() != 0)
+                state.pickUpGold();
+        }
     }
     
+    /** Recursivelly explore the maze until we find the orb.
+     *
+     * We select the assumed best node by choosing the neighbour node with the
+     * smallest distance to the orb.
+     *
+     * @param state the exploration state
+     * @param previousLocation the previous location on the path taken
+     * @param visited the set of visited locations
+     * @return false if a dead end; true otherwise
+     */
     private boolean explore(ExplorationState state, long previousLocation,
         Set<Long> visited
     ) {
@@ -109,5 +143,90 @@ public class Explorer {
         // We reached a dead end, move back
         state.moveTo(previousLocation);
         return false;
+    }
+    
+    /** Search for the smallest path.
+     *
+     * The current implementation uses the Dijskra's algo to search for the
+     * smallest path.
+     *
+     * @param graph the graph
+     * @param source the source node
+     * @return the map with the prev node
+     */
+    private HashMap<Node, Node> escapeSearch(Collection<Node> graph,
+        Node source
+    ) {
+        HashSet<Node> visited = new HashSet<>();
+        HashMap<Node, Integer> dist = new HashMap<>();
+        HashMap<Node, Node> prev = new HashMap<>();
+    
+        // Initialise distances
+        for (Node node : graph)
+            dist.put(node, Integer.MAX_VALUE);
+        
+        dist.put(source, 0);
+        
+        // Search
+        for (int i = 0; i < graph.size(); i++) {
+            Node next = getMinNode(dist, visited);
+            visited.add(next);
+            
+            Collection<Node> childs = next.getNeighbours();
+            for (Node child : childs) {
+                int d = dist.get(next) + next.getEdge(child).length;
+                if (dist.get(child) > d) {
+                    dist.put(child, d);
+                    prev.put(child, next);
+                }
+            }
+        }
+        return prev;
+    }
+    
+    /** Selects the best next node to walk to.
+     *
+     * @param dist the distances to the source node
+     * @param visited the visited nodes set
+     * @return the best next node
+     */
+    private Node getMinNode(HashMap<Node, Integer> dist,
+        HashSet<Node> visited
+    ) {
+        Node min = null;
+        int d = Integer.MAX_VALUE;
+        
+        // Find next best node
+        for (Node node : dist.keySet()) {
+            if (!visited.contains(node)) {
+                int cur = dist.get(node);
+                if (cur < d) {
+                    min = node;
+                    d = cur;
+                }
+            }
+        }
+        return min;
+    }
+    
+    /** Returns the escape path.
+     *
+     * @param prev the map with previous nodes
+     * @param source the source node
+     * @param target the target node
+     * @return the path
+     */
+    private Stack<Node> determineEscapePath(Map<Node, Node> prev, Node source,
+        Node target
+    ) {
+        Stack<Node> path = new Stack<>();
+        
+        // Walk from target to source node
+        Node node = target;
+        while (node != source) {
+            path.push(node);
+            node = prev.get(node);
+        }
+        return path;
     }
 }
