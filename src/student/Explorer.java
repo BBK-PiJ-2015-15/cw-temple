@@ -82,6 +82,9 @@ public class Explorer {
         // Determine path
         Path path = determineEscapePath(prev, source, state.getExit());
         
+        // Extra distance we can walk while still making the exit on time
+        int extraDistance = state.getTimeRemaining() - path.distance;
+        
         // Walk to exit node
         Node previousNode = source;
         while (!path.route.isEmpty()) {
@@ -95,21 +98,18 @@ public class Explorer {
             if (tile.getGold() != 0)
                 state.pickUpGold();
             
-            // Update distance
-            path.distance -= previousNode.getEdge(node).length();
-            
             // If we have time, move to neighbours to collect gold
             Set<Node> childs = node.getNeighbours();
             for (Node child : childs) {
                 if (!path.route.contains(child) &&
                     child.getTile().getGold() != 0
                 ) {
-                    int extraDistance = 2 * node.getEdge(child).length();
-                    if (path.distance + extraDistance < state.getTimeRemaining()) {
+                    int distance = 2 * node.getEdge(child).length();
+                    if (extraDistance - distance > 0) {
                         state.moveTo(child);
                         state.pickUpGold();
                         state.moveTo(node);
-                        path.distance -= extraDistance;
+                        extraDistance -= distance;
                     }
                 }
             }
